@@ -12,7 +12,7 @@ try:
 except KeyError:
     raise Exception("GCS_BUCKET_NAME environment variable not set. Deployment failed.")
 
-GRID_SIZE = 6  # 切成 6x6
+GRID_SIZE = 4  # 切成 4x4
 
 # 初始化
 app = FastAPI()
