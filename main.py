@@ -12,7 +12,6 @@ try:
 except KeyError:
     raise Exception("GCS_BUCKET_NAME environment variable not set. Deployment failed.")
 
-GRID_SIZE = 4  # 切成 4x4
 
 # 初始化
 app = FastAPI()
@@ -22,6 +21,7 @@ storage_client = storage.Client()
 @app.post("/slice")
 async def slice_image(request_body: dict):
     image_url = request_body.get("imageUrl")
+    grid_size = request_body.get("gridSize", 4)
 
     if not image_url:
         raise HTTPException(status_code=400, detail="Missing 'imageUrl' in request body.")
@@ -43,23 +43,23 @@ async def slice_image(request_body: dict):
     # ------------------------------------------------------
     # ⭐ 自动调整尺寸到可被 6 整除（自动裁剪）
     # ------------------------------------------------------
-    new_w = W - (W % GRID_SIZE)
-    new_h = H - (H % GRID_SIZE)
+    new_w = W - (W % grid_size)
+    new_h = H - (H % grid_size)
 
     if new_w != W or new_h != H:
         img = img.crop((0, 0, new_w, new_h))
         W, H = new_w, new_h
     # ------------------------------------------------------
 
-    w_slice = W // GRID_SIZE
-    h_slice = H // GRID_SIZE
+    w_slice = W // grid_size
+    h_slice = H // grid_size
 
     bucket = storage_client.bucket(GCS_BUCKET_NAME)
     results = []
 
     # 2. 切割并上传
-    for i in range(GRID_SIZE):
-        for j in range(GRID_SIZE):
+    for i in range(grid_size):
+        for j in range(grid_size):
             left = j * w_slice
             upper = i * h_slice
             right = left + w_slice
@@ -81,7 +81,7 @@ async def slice_image(request_body: dict):
             cropped.save(img_bytes, format="JPEG")
             img_bytes.seek(0)
 
-            index = i * GRID_SIZE + j + 1
+            index = i * grid_size + j + 1
             filename = f"{unique_id}_slice_{W}x{H}_{index}.jpg"
 
             blob = bucket.blob(filename)
